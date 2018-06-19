@@ -1,6 +1,8 @@
+# encoding:utf-8
 # Linux kernel kallsyms unpacker
 # Version 0.2
 # Copyright (c) 2010-2013 Igor Skochinsky
+# Copyright (c) 2018 swigger@github
 #
 # This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
@@ -20,6 +22,34 @@
 #
 #    3. This notice may not be removed or altered from any source
 #    distribution.
+
+# 手动查找说明：首先，找到字符串 kallsyms_lookup_name
+# 找它的引用，其中一个引用前面紧挨着是个函数，对这个函数就是 kallsyms_lookup_name
+# 然后进去，循环比较的目的地址是 kallsyms_num_syms
+# 返回前那个地址base是 kallsyms_addresses
+# 进返回前那个调得比较多的函数，对，就是，kallsyms_expand_symbol
+# 里面有一个的实际是
+# v7 = &kallsyms_token_table[kallsyms_token_index[kallsyms_names[a1 + 1 + v3]]];
+# 对应源码：
+# unsigned long kallsyms_lookup_name(const char *name)
+# {
+#     char namebuf[KSYM_NAME_LEN];
+#     unsigned long i;
+#     unsigned int off;
+#
+#     for (i = 0, off = 0; i < kallsyms_num_syms; i++) {
+#         off = kallsyms_expand_symbol(off, namebuf, ARRAY_SIZE(namebuf));
+#
+#         if (strcmp(namebuf, name) == 0)
+#             return kallsyms_addresses[i];
+#     }
+#     return module_kallsyms_lookup_name(name);
+# }
+# kallsyms_expand_symbol():
+# ...
+#     while (len) {
+#         tptr = &kallsyms_token_table[kallsyms_token_index[*data]];
+# ...
 
 is64 = GetSegmentAttr(here(), SEGATTR_BITNESS) == 2
 if is64:
